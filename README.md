@@ -4,13 +4,14 @@ RESTful API
 Scalable!! 
 
 API: 
-create (CREATE)
+make(CREATE)
 	create a new table( means a server host)
 	table=$table
 
 get (READ)
 	table=$table& # no args could load latest 20 record 
-	from=$datefrom # catch all data after 
+	user=$user&
+	from=$datefrom # catch all data after the point 
 
 set (UPDATE)
 	table=$table&
