@@ -7,13 +7,12 @@ var app = express();
 // logger
 var logger = require( 'morgan');
 
-// read config 
-//// main config
-//// db config 
+// config
+var CONFIG = require( './config.json');
 
 app.use( bodyParser.urlencoded());
 app.use( logger());
-app.set( 'title', 'edb');
+app.set( 'title', CONFIG.hosting.title);
 
 app.get( '/', function( req, res) {
 	res.send( "Hello, i am an event database.");
@@ -23,7 +22,7 @@ app.post( '/make', function( req, res) {
 	if( req.param( 'table')) {
 		var tbl = req.param( 'table');
 		// create a talbe named $table
-		var filepath = './' + tbl;
+		var filepath = CONFIG.database.prefix + tbl;
 		fs.exists( filepath, function( exists) {
 			if( exists) {
 				res.json( 500, {
@@ -73,7 +72,7 @@ app.post( '/cmp', function( req, res) {
 	if( req.param( 'table')) {
 		if( req.param( 'user')) {
 			if( req.param( 'start')) {
-				var dbname = './' + req.param( 'table') + '/_' + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -108,7 +107,7 @@ app.post( '/cmp', function( req, res) {
 			}
 			else {
 				// no assign time, use now 
-				var dbname = './' + req.param( 'table') + '/_' + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -165,7 +164,7 @@ app.post( '/set', function( req, res) {
 				var op = req.param( 'cmd');
 				var now = new Date();
 				var int_now = now.getTime();
-				var dbname = "./" + tbl + "/_" + usr + ".json";
+				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				fs.exists( dbname, function( exists) {
 					if( !exists) {
 						//first open file
@@ -211,7 +210,7 @@ app.get( '/get', function( req, res) {
 		if( req.param( 'user')) {
 			if( req.param( 'start')) {
 				// with time assigned, output record after $start
-				var dbname = './' + req.param( 'table') + '/_' + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -254,7 +253,7 @@ app.get( '/get', function( req, res) {
 			}
 			else {
 				// no time assigned, output the last 10
-				var dbname = './' + req.param( 'table') + '/_' + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -307,6 +306,6 @@ app.get( '/valid', function( req, res) {
 
 });
 
-app.listen( 3399, function() {
+app.listen( CONFIG.hosting.port, CONFIG.hosting.host, function() {
 	console.log( "Server bind at port 3399");
 });
