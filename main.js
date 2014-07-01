@@ -18,48 +18,119 @@ app.get( '/', function( req, res) {
 	res.send( "Hello, i am an event database.");
 });
 
+function chk_tbl( tbl) {
+
+	var filepath = CONFIG.database.prefix + "/" +  tbl;
+	if( fs.existsSync( filepath)) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+
+}
+
+function mk_tbl( tbl, filepath, callback) {
+	var out = {};
+	fs.exists( filepath, function( exists) {
+		if( exists) {
+			out = { 
+				'st_code' : 500, 
+				'content' : { 
+					'table' : tbl,
+					'error' : "Table exists"
+				}
+			}
+		} 
+		else {
+			fs.mkdir( filepath, 0755, function ( err) {
+				if( !err) {
+					var filename = filepath + '/.init_edb';
+					var init_tbl = {
+						'table' : tbl,
+						'createTime' : new Date().getTime()
+					};
+					fs.writeFile( filename, JSON.stringify( init_tbl), function( err) {
+						if( err) {
+							console.log( err);
+							out = { 
+								'st_code' : 500,
+								'content' : {
+									'table' : tbl,
+									'error' : "Failed to write init file by " + err
+								}
+							};
+						}
+						else {
+							out = { 
+								'st_code' : 200, 
+								'content' : init_tbl
+							};
+						}
+					})
+				}
+				else {
+					out = { 
+						'st_code' : 500,
+						'content' : {
+							'table' : tbl,
+							'error' : "Failed to create table by " + err
+						}
+					};
+				}
+			});
+		}
+	});
+
+	if( callback && typeof( callback) === "function") 
+		callback( out);
+}
+
+function put_tbl( tbl, dbname, cmd, callback) {
+	var int_now = new Date().getTime();
+	var out = {};
+	console.log( tbl, dbname, cmd);
+	fs.exists( dbname, function( exists) {
+		if( !exists) {
+			//first open file
+			var outfile = {};
+			outfile['createTime'] = int_now;
+			outfile['lastUpdate'] = int_now;
+			outfile['cmd'] = new Object();
+			outfile['cmd'][int_now] = cmd;
+			fs.writeFileSync( dbname, JSON.stringify( outfile));
+
+			out = { 
+				'st_code' : 200,
+				'content' : outfile
+			};
+		}
+		else {
+			//file exists 
+			var infile = JSON.parse(fs.readFileSync( dbname, 'utf8'));
+			infile['lastUpdate'] = int_now;
+			infile['cmd'][int_now] = cmd;
+			fs.writeFileSync( dbname, JSON.stringify( infile));
+
+			out = { 
+				'st_code' : 200,
+				'content' : infile
+			};
+		}
+	});
+
+	if( callback && typeof( callback) === "function")
+		callback( out);
+}
+
 app.post( '/make', function( req, res) {
 	if( req.param( 'table')) {
 		var tbl = req.param( 'table');
 		// create a talbe named $table
-		var filepath = CONFIG.database.prefix + tbl;
-		fs.exists( filepath, function( exists) {
-			if( exists) {
-				res.json( 500, {
-					'table' : tbl, 
-					'error' : "Table exists."
-				});
-			} 
-			else {
-				fs.mkdir( filepath, 0755, function ( err) {
-					if( !err) {
-						var filename = filepath + '/.init_edb';
-						var init_tbl = {
-							'table' : tbl,
-							'createTime' : new Date()
-						};
-						fs.writeFile( filename, JSON.stringify( init_tbl), function( err) {
-							if( err) {
-								console.log( err);
-								res.json( 500, {
-									'table' : tbl,
-									'error' : err
-								});
-							}
-							else {
-								res.json( 200, init_tbl);
-							}
-						})
-					}
-					else {
-						res.json( 500, {
-							'table' : tbl, 
-							'error' : "Failed to create table by " + err
-						});
-					}
-				});
-			}
-		});
+		var filepath = CONFIG.database.prefix + "/" + tbl;
+		out = mk_tbl( tbl, filepath, function( out) { 
+			res.json( out.st_code, out.content);
+		}); 
 	}
 	else {
 		res.json( 500, { 
@@ -72,27 +143,27 @@ app.post( '/cmp', function( req, res) {
 	if( req.param( 'table')) {
 		if( req.param( 'user')) {
 			if( req.param( 'start')) {
-				var dbname = CONFIG.database.prefix + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + "/" + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
 						var infile = JSON.parse(fs.readFileSync( dbname, 'utf8'));
-						var cur = new Date( parseInt( req.param( 'start')));
+						var query = new Date( parseInt( req.param( 'start')));
 						var last = new Date( infile.lastUpdate);
-						if( last.getTime() > cur.getTime()) {
+						if( last.getTime() > query.getTime()) {
 							// could recovery
 							res.json( 200, {
 								'synced' : 1
 							});
 						}
-						else if( last.getTime() == cur.getTime()) {
+						else if( last.getTime() == query.getTime()) {
 							// need diff
 							res.json( 200, {
 								'synced' : 0
 							});
 						}
 						else {
-							// edb out of date
+							// edb may out of date
 							res.json( 200, {
 								'synced' : -1
 							});
@@ -107,7 +178,7 @@ app.post( '/cmp', function( req, res) {
 			}
 			else {
 				// no assign time, use now 
-				var dbname = CONFIG.database.prefix + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
+				var dbname = CONFIG.database.prefix + "/" + req.param( 'table') + '/' + CONFIG.database.tbl_prefix + req.param( 'user') + '.json';
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -155,6 +226,7 @@ app.post( '/cmp', function( req, res) {
 });
 
 app.post( '/set', function( req, res) {
+	console.log( JSON.stringify( req.param));
 	if( req.param( 'table')) {
 		// from which server 
 		if( req.param( 'user')) {
@@ -162,29 +234,28 @@ app.post( '/set', function( req, res) {
 				var tbl = req.param( 'table');
 				var usr = req.param( 'user');
 				var op = req.param( 'cmd');
-				var now = new Date();
-				var int_now = now.getTime();
-				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
-				fs.exists( dbname, function( exists) {
-					if( !exists) {
-						//first open file
-						var outfile = {};
-						outfile['createTime'] = int_now;
-						outfile['lastUpdate'] = int_now;
-						outfile['cmd'] = new Object();
-						outfile['cmd'][int_now] = op;
-						fs.writeFileSync( dbname, JSON.stringify( outfile));
-						res.send( 200, JSON.stringify(outfile));
+				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
+				if( !chk_tbl( tbl) ) {
+					if( CONFIG.strict == true) {
+						// must need make table then put data
+						res.json( 500, {
+							'error' : 'Table not found'
+						});
 					}
 					else {
-						//file exists 
-						var infile = JSON.parse(fs.readFileSync( dbname, 'utf8'));
-						infile['lastUpdate'] = int_now;
-						infile['cmd'][int_now] = op;
-						fs.writeFileSync( dbname, JSON.stringify( infile));
-						res.send( 200, JSON.stringify(infile));
+						// make table 
+						var filepath = CONFIG.database.prefix + "/" + tbl;
+						mk_tbl( tbl, filepath);
+						put_tbl( tbl, dbname, op, function( out) {
+							res.json( out.st_code, out.content);
+						});
 					}
-				});
+				} 
+				else {
+					put_tbl( tbl, dbname, op, function( out) {
+						res.json( out.st_code, out.content);
+					});
+				}
 			}
 			else {
 				res.json( 500, {
@@ -210,7 +281,7 @@ app.get( '/get', function( req, res) {
 		if( req.param( 'user')) {
 			if( req.param( 'start')) {
 				// with time assigned, output record after $start
-				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
+				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -253,7 +324,7 @@ app.get( '/get', function( req, res) {
 			}
 			else {
 				// no time assigned, output the last 10
-				var dbname = CONFIG.database.prefix + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
+				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				fs.exists( dbname, function( exists) {
 					if( exists) {
 						// table exists
@@ -296,16 +367,21 @@ app.get( '/get', function( req, res) {
 
 app.get( '/connect', function( req, res) {
 	// scaling 
-
-
+		res.json( 501, {
+			'error' : 'Not Implemented'
+		});
 });
 
 app.get( '/valid', function( req, res) {
 	// check ip valid 
-
-
+		res.json( 501, {
+			'error' : 'Not Implemented'
+		});
 });
 
 app.listen( CONFIG.hosting.port, CONFIG.hosting.host, function() {
 	console.log( "Server bind at port 3399");
+	if( !chk_tbl( "")) {
+		fs.mkdir( CONFIG.database.prefix, 0755);
+	}
 });

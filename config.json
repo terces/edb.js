@@ -9,6 +9,6 @@
 		"tbl_prefix" : "_"
 	},
 	"misc" : {
-		"strict" : true
+		"strict" : false
 	}
 }
