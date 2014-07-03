@@ -80,16 +80,15 @@ function mk_tbl( tbl, filepath, callback) {
 				}
 			});
 		}
+		if( callback && typeof( callback) === "function") 
+			callback( out);
 	});
 
-	if( callback && typeof( callback) === "function") 
-		callback( out);
 }
 
 function put_tbl( tbl, dbname, cmd, callback) {
 	var int_now = new Date().getTime();
 	var out = {};
-	console.log( tbl, dbname, cmd);
 	fs.exists( dbname, function( exists) {
 		if( !exists) {
 			//first open file
@@ -102,7 +101,7 @@ function put_tbl( tbl, dbname, cmd, callback) {
 
 			out = { 
 				'st_code' : 200,
-				'content' : outfile
+		'content' : outfile
 			};
 		}
 		else {
@@ -117,10 +116,10 @@ function put_tbl( tbl, dbname, cmd, callback) {
 				'content' : infile
 			};
 		}
+		if( callback && typeof( callback) === "function")
+			callback( out);
 	});
 
-	if( callback && typeof( callback) === "function")
-		callback( out);
 }
 
 app.post( '/make', function( req, res) {
@@ -226,7 +225,6 @@ app.post( '/cmp', function( req, res) {
 });
 
 app.post( '/set', function( req, res) {
-	console.log( JSON.stringify( req.param));
 	if( req.param( 'table')) {
 		// from which server 
 		if( req.param( 'user')) {
