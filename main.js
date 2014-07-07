@@ -10,8 +10,12 @@ var logger = require( 'morgan');
 // config
 var CONFIG = require( './config.json');
 
+var logfile = fs.createWriteStream( CONFIG.database.prefix + ".log", { flags: 'a'});
+
 app.use( bodyParser.urlencoded());
-app.use( logger());
+app.use( logger( {
+	stream: logfile
+}));
 app.set( 'title', CONFIG.hosting.title);
 
 app.get( '/', function( req, res) {
@@ -225,6 +229,7 @@ app.post( '/cmp', function( req, res) {
 });
 
 app.post( '/set', function( req, res) {
+	console.log( req.param( 'table'), req.param( 'user'), req.param( 'start'), req.param( 'cmd'));
 	if( req.param( 'table')) {
 		// from which server 
 		if( req.param( 'user')) {
@@ -275,6 +280,7 @@ app.post( '/set', function( req, res) {
 });
 
 app.get( '/get', function( req, res) {
+	console.log( req.param( 'table'), req.param( 'user'), req.param( 'start'));
 	if( req.param( 'table')) {
 		if( req.param( 'user')) {
 			if( req.param( 'start')) {
