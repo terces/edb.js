@@ -9,7 +9,7 @@ var logger = require( 'morgan');
 
 // config
 var CONFIG = require( './config.json');
-
+//logfile
 var logfile = fs.createWriteStream( CONFIG.database.prefix + ".log", { flags: 'a'});
 
 app.use( bodyParser.urlencoded());
@@ -90,7 +90,7 @@ function mk_tbl( tbl, filepath, callback) {
 
 }
 
-function put_tbl( tbl, dbname, cmd, callback) {
+function put_tbl( tbl, dbname, rec, cmd, callback) {
 	var int_now = new Date().getTime();
 	var out = {};
 	fs.exists( dbname, function( exists) {
@@ -100,19 +100,19 @@ function put_tbl( tbl, dbname, cmd, callback) {
 			outfile['createTime'] = int_now;
 			outfile['lastUpdate'] = int_now;
 			outfile['cmd'] = new Object();
-			outfile['cmd'][int_now] = cmd;
+			outfile['cmd'][int_now] = [rec, cmd];
 			fs.writeFileSync( dbname, JSON.stringify( outfile));
 
 			out = { 
 				'st_code' : 200,
-		'content' : outfile
+				'content' : outfile
 			};
 		}
 		else {
 			//file exists 
 			var infile = JSON.parse(fs.readFileSync( dbname, 'utf8'));
 			infile['lastUpdate'] = int_now;
-			infile['cmd'][int_now] = cmd;
+			infile['cmd'][int_now] = [rec, cmd];
 			fs.writeFileSync( dbname, JSON.stringify( infile));
 
 			out = { 
@@ -229,13 +229,13 @@ app.post( '/cmp', function( req, res) {
 });
 
 app.post( '/set', function( req, res) {
-	console.log( req.param( 'table'), req.param( 'user'), req.param( 'start'), req.param( 'cmd'));
 	if( req.param( 'table')) {
 		// from which server 
 		if( req.param( 'user')) {
 			if( req.param( 'cmd')) {
 				var tbl = req.param( 'table');
 				var usr = req.param( 'user');
+				var rec_file = req.param( 'rec_file'); // file in odb, need to store the hash key 
 				var op = req.param( 'cmd');
 				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
 				if( !chk_tbl( tbl) ) {
@@ -249,13 +249,13 @@ app.post( '/set', function( req, res) {
 						// make table 
 						var filepath = CONFIG.database.prefix + "/" + tbl;
 						mk_tbl( tbl, filepath);
-						put_tbl( tbl, dbname, op, function( out) {
+						put_tbl( tbl, dbname,rec_file, op, function( out) {
 							res.json( out.st_code, out.content);
 						});
 					}
 				} 
 				else {
-					put_tbl( tbl, dbname, op, function( out) {
+					put_tbl( tbl, dbname, rec_file, op, function( out) {
 						res.json( out.st_code, out.content);
 					});
 				}
@@ -280,9 +280,10 @@ app.post( '/set', function( req, res) {
 });
 
 app.get( '/get', function( req, res) {
-	console.log( req.param( 'table'), req.param( 'user'), req.param( 'start'));
 	if( req.param( 'table')) {
+		var tbl = req.param( 'table');
 		if( req.param( 'user')) {
+			var usr = req.param( 'user');
 			if( req.param( 'start')) {
 				// with time assigned, output record after $start
 				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
