@@ -280,10 +280,22 @@ app.post( '/set', function( req, res) {
 });
 
 app.get( '/get', function( req, res) {
-	if( req.param( 'table')) {
-		var tbl = req.param( 'table');
-		if( req.param( 'user')) {
-			var usr = req.param( 'user');
+	res.json( 500, {
+		'error': 'Please specified a table and user'
+	});
+});
+
+app.get( '/get/:table', function( req, res) {
+	res.json( 500, {
+		'error': 'Please specified a user'
+	});
+});
+
+app.get( '/get/:table/:user', function( req, res) {
+	if( req.params.table) {
+		var tbl = req.params.table;
+		if( req.params.user) {
+			var usr = req.params.user;
 			if( req.param( 'start')) {
 				// with time assigned, output record after $start
 				var dbname = CONFIG.database.prefix + "/" + tbl + "/" + CONFIG.database.tbl_prefix + usr + ".json";
@@ -291,7 +303,7 @@ app.get( '/get', function( req, res) {
 					if( exists) {
 						// table exists
 						var infile = JSON.parse(fs.readFileSync( dbname, 'utf8'));
-						var cur = new Date( parseInt( req.param( 'start')));
+						var since = new Date( parseInt( req.param( 'start')));
 						var keys = Object.keys( infile.cmd).sort( function( a,b) {
 							var ia = parseInt( a);
 							var ib = parseInt( b);
@@ -301,19 +313,22 @@ app.get( '/get', function( req, res) {
 						var out = {};
 						var cnt = 0;
 
-						var start = 0, end = keys_cnt - 1, mid = (start + end) / 2;
+						var start = 0, end = keys_cnt - 1, mid = parseInt( (start + end) / 2);
 						// binary search, search an approach time 
 						while( start < mid) { 
 							var rec = new Date( parseInt( keys[ mid]));
-							if( cur.getTime() > rec.getTime()) 
+							console.log( 'rec: ' + rec.getTime());
+							console.log( 'since: ' + since.getTime());
+							console.log( start, mid, end);
+							if( since.getTime() > rec.getTime()) 
 								start = mid;
-							else if( rec.getTime() == cur.getTime()) 
+							else if( rec.getTime() == since.getTime()) 
 								break;
 							else 
 								end = mid;
 							mid = parseInt( ( start + end) / 2);
 						}
-						mid = parseInt( keys[mid]) != cur.getTime() ? mid + 1 : mid;
+						mid = parseInt( keys[mid]) != since.getTime() ? mid + 1 : mid;
 						while( mid < keys_cnt) {
 							out[ keys[ mid]] = infile.cmd[ keys[ mid]];
 							++mid;
