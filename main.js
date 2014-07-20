@@ -317,9 +317,6 @@ app.get( '/get/:table/:user', function( req, res) {
 						// binary search, search an approach time 
 						while( start < mid) { 
 							var rec = new Date( parseInt( keys[ mid]));
-							console.log( 'rec: ' + rec.getTime());
-							console.log( 'since: ' + since.getTime());
-							console.log( start, mid, end);
 							if( since.getTime() > rec.getTime()) 
 								start = mid;
 							else if( rec.getTime() == since.getTime()) 
