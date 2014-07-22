@@ -13,7 +13,7 @@ get (READ)
 	user=$user&
 	from=$datefrom # catch all data after the point 
 
-set (UPDATE)
+put (UPDATE)
 	table=$table&
 	user=$user&
 	content=$content

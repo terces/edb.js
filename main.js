@@ -228,7 +228,7 @@ app.post( '/cmp', function( req, res) {
 	}
 });
 
-app.post( '/set', function( req, res) {
+app.post( '/put', function( req, res) {
 	if( req.param( 'table')) {
 		// from which server 
 		if( req.param( 'user')) {
